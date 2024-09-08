@@ -105,24 +105,26 @@ export default function SearchScreen() {
         scrollEnabled={searchResultsLoaded ? true : false}
         keyboardDismissMode="on-drag"
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{ flexGrow: 1 }}
+        contentContainerStyle={{
+          flexGrow: 1,
+          alignItems: "center",
+          justifyContent: "center",
+        }}
       >
-        <View>
-          <Animated.View style={[searchResultsStyle, { flex: 1 }]}>
-            <View flexDirection="row" flexWrap="wrap">
-              {data?.map((item, index) => (
-                <View
-                  key={index}
-                  paddingHorizontal={12}
-                  paddingBottom={12}
-                  width="50%"
-                >
-                  <Item data={item} />
-                </View>
-              ))}
-            </View>
-          </Animated.View>
-        </View>
+        <Animated.View style={[searchResultsStyle, { flex: 1 }]}>
+          <View flexDirection="row" flexWrap="wrap">
+            {data?.map((item, index) => (
+              <View
+                key={index}
+                paddingHorizontal={12}
+                paddingBottom={12}
+                width="50%"
+              >
+                <Item data={item} />
+              </View>
+            ))}
+          </View>
+        </Animated.View>
       </ScreenLayout>
       <Animated.View
         style={[

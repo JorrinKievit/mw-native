@@ -3,8 +3,10 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
 import { usePlayer } from "~/hooks/player/usePlayer";
+import { usePlayerStore } from "~/stores/player/store";
 
 export const BackButton = () => {
+  const resetVideo = usePlayerStore((state) => state.resetVideo);
   const { dismissFullscreenPlayer } = usePlayer();
   const router = useRouter();
 
@@ -12,6 +14,7 @@ export const BackButton = () => {
     <Ionicons
       name="arrow-back"
       onPress={() => {
+        resetVideo();
         dismissFullscreenPlayer()
           .then(() => {
             if (router.canGoBack()) {

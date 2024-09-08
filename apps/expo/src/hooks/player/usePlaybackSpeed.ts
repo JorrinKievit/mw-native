@@ -5,20 +5,20 @@ import { usePlayerStore } from "~/stores/player/store";
 const speeds = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
 
 export const usePlaybackSpeed = () => {
-  const videoRef = usePlayerStore((state) => state.videoRef);
+  const player = usePlayerStore((state) => state.player);
 
   const changePlaybackSpeed = useCallback(
-    async (newValue: number) => {
-      if (videoRef) {
-        await videoRef.setRateAsync(newValue, true);
+    (newValue: number) => {
+      if (player) {
+        player.playbackRate = newValue;
       }
     },
-    [videoRef],
+    [player],
   );
 
   return {
     speeds,
-    currentSpeed: videoRef?.props.rate ?? 1,
+    currentSpeed: player?.playbackRate ?? 1,
     changePlaybackSpeed,
   } as const;
 };

@@ -6,10 +6,10 @@
     "paths": {
       "~/*": ["./src/*"],
       "~/components/*": ["./src/components/*"],
-      "modules/*": ["./modules/*"],
+      "modules/*": ["./modules/*"]
     },
     "jsx": "react-native",
-    "tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json",
+    "tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json"
   },
   "include": [
     "src",
@@ -18,7 +18,7 @@
     "*.js",
     ".expo/types/**/*.ts",
     "expo-env.d.ts",
-    "src/plugins/*",
+    "src/plugins/*"
   ],
-  "exclude": ["node_modules"],
+  "exclude": ["node_modules"]
 }

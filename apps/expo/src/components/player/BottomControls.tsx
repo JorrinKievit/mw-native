@@ -1,11 +1,11 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Platform, TouchableOpacity } from "react-native";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withTiming,
 } from "react-native-reanimated";
-import { isDevelopmentProvisioningProfile } from "modules/check-ios-certificate";
+import { isIncorrectAppId } from "modules/check-ios-app-id";
 import { Text, View } from "tamagui";
 import { LinearGradient } from "tamagui/linear-gradient";
 
@@ -18,14 +18,17 @@ import { ProgressBar } from "./ProgressBar";
 import { SeasonSelector } from "./SeasonEpisodeSelector";
 import { SettingsSelector } from "./SettingsSelector";
 import { SourceSelector } from "./SourceSelector";
-import { mapMillisecondsToTime } from "./utils";
+import { mapSecondsToTime } from "./utils";
 
 export const BottomControls = () => {
-  const status = usePlayerStore((state) => state.status);
+  const player = usePlayerStore((state) => state.player);
   const isIdle = usePlayerStore((state) => state.interface.isIdle);
   const setIsIdle = usePlayerStore((state) => state.setIsIdle);
   const isLocalFile = usePlayerStore((state) => state.isLocalFile);
   const [showRemaining, setShowRemaining] = useState(false);
+
+  const [localDuration, setLocalDuration] = useState(0);
+  const [localCurrentTime, setLocalCurrentTime] = useState(0);
 
   const toggleTimeDisplay = useCallback(() => {
     setIsIdle(false);
@@ -33,25 +36,16 @@ export const BottomControls = () => {
   }, [showRemaining, setIsIdle]);
 
   const { currentTime, remainingTime } = useMemo(() => {
-    if (status?.isLoaded) {
-      const current = mapMillisecondsToTime(status.positionMillis ?? 0);
-      const remaining = `-${mapMillisecondsToTime(
-        (status.durationMillis ?? 0) - (status.positionMillis ?? 0),
-      )}`;
-      return { currentTime: current, remainingTime: remaining };
-    } else {
-      return {
-        currentTime: mapMillisecondsToTime(0),
-        remainingTime: mapMillisecondsToTime(0),
-      };
-    }
-  }, [status]);
+    const current = mapSecondsToTime(localCurrentTime);
+    const remaining = `-${mapSecondsToTime(
+      (localDuration ?? 0) - localCurrentTime,
+    )}`;
+    return { currentTime: current, remainingTime: remaining };
+  }, [localCurrentTime, localDuration]);
 
   const durationTime = useMemo(() => {
-    return mapMillisecondsToTime(
-      status?.isLoaded ? status.durationMillis ?? 0 : 0,
-    );
-  }, [status]);
+    return mapSecondsToTime(localDuration ?? 0);
+  }, [localDuration]);
 
   const translateY = useSharedValue(128);
 
@@ -64,6 +58,22 @@ export const BottomControls = () => {
       transform: [{ translateY: translateY.value }],
     };
   });
+
+  // TODO: No duration events in expo-video yet
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (player?.duration && player?.currentTime) {
+        requestAnimationFrame(() => {
+          setLocalDuration(player.duration);
+          setLocalCurrentTime(player.currentTime);
+        });
+      }
+    }, 1000);
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, [player]);
 
   return (
     <Animated.View style={[animatedStyle, { height: 148 }]}>
@@ -111,8 +121,7 @@ export const BottomControls = () => {
                 <AudioTrackSelector />
                 <SettingsSelector />
                 {Platform.OS === "android" ||
-                (Platform.OS === "ios" &&
-                  isDevelopmentProvisioningProfile()) ? (
+                (Platform.OS === "ios" && !isIncorrectAppId()) ? (
                   <DownloadButton />
                 ) : null}
               </>

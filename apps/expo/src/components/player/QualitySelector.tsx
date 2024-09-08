@@ -9,12 +9,12 @@ import { Settings } from "./settings/Sheet";
 
 export const QualitySelector = (props: SheetProps) => {
   const theme = useTheme();
-  const videoRef = usePlayerStore((state) => state.videoRef);
+  const player = usePlayerStore((state) => state.player);
   const videoSrc = usePlayerStore((state) => state.videoSrc);
   const stream = usePlayerStore((state) => state.interface.currentStream);
   const hlsTracks = usePlayerStore((state) => state.interface.hlsTracks);
 
-  if (!videoRef || !videoSrc || !stream) return null;
+  if (!player || !videoSrc || !stream) return null;
   let qualityMap: { quality: string; url: string }[];
   let currentQuality: string | undefined;
 
@@ -32,7 +32,19 @@ export const QualitySelector = (props: SheetProps) => {
   } else if (stream.type === "hls") {
     if (!hlsTracks?.video) return null;
 
-    qualityMap = hlsTracks.video.map((video) => ({
+    const hlsTracksWithoutDuplicatedQualities = hlsTracks.video.filter(
+      (video, index, self) => {
+        return (
+          index ===
+          self.findIndex(
+            (v) =>
+              v.properties[0]?.attributes.resolution ===
+              video.properties[0]?.attributes.resolution,
+          )
+        );
+      },
+    );
+    qualityMap = hlsTracksWithoutDuplicatedQualities.map((video) => ({
       quality:
         (video.properties[0]?.attributes.resolution as string) ?? "unknown",
       url: constructFullUrl(stream.playlist, video.uri),
@@ -77,11 +89,10 @@ export const QualitySelector = (props: SheetProps) => {
                   )
                 }
                 onPress={() => {
-                  void videoRef.unloadAsync();
-                  void videoRef.loadAsync(
-                    { uri: quality.url, headers: stream.headers },
-                    { shouldPlay: true },
-                  );
+                  player.replace({
+                    uri: quality.url,
+                    headers: stream.headers,
+                  });
                 }}
               />
             ))}

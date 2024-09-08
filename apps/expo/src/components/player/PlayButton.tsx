@@ -1,41 +1,47 @@
+import { useEffect, useState } from "react";
 import { FontAwesome } from "@expo/vector-icons";
 import { Spinner } from "tamagui";
 
 import { usePlayerStore } from "~/stores/player/store";
 
 export const PlayButton = () => {
-  const videoRef = usePlayerStore((state) => state.videoRef);
-  const status = usePlayerStore((state) => state.status);
+  const player = usePlayerStore((state) => state.player);
   const playAudio = usePlayerStore((state) => state.playAudio);
   const pauseAudio = usePlayerStore((state) => state.pauseAudio);
 
-  if (
-    status?.isLoaded &&
-    !status.isPlaying &&
-    status.isBuffering &&
-    status.positionMillis > status.playableDurationMillis!
-  ) {
+  const [isPlaying, setIsPlaying] = useState(player?.playing ?? false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    const statusListener = player?.addListener("statusChange", (status) => {
+      setIsLoading(status === "loading");
+    });
+
+    return () => {
+      statusListener?.remove();
+    };
+  }, [player]);
+
+  if (!player) return null;
+
+  if (isLoading) {
     return <Spinner size="large" color="white" />;
   }
 
   return (
     <FontAwesome
-      name={status?.isLoaded && status.isPlaying ? "pause" : "play"}
+      name={isPlaying ? "pause" : "play"}
       size={36}
       color="white"
       onPress={() => {
-        if (status?.isLoaded) {
-          if (status.isPlaying) {
-            videoRef?.pauseAsync().catch(() => {
-              console.log("Error pausing video");
-            });
-            void pauseAudio();
-          } else {
-            videoRef?.playAsync().catch(() => {
-              console.log("Error playing video");
-            });
-            void playAudio();
-          }
+        if (player.playing) {
+          player.pause();
+          void pauseAudio();
+          setIsPlaying(false);
+        } else {
+          player.play();
+          void playAudio();
+          setIsPlaying(true);
         }
       }}
     />

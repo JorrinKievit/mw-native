@@ -1,13 +1,13 @@
-import type { NativeSyntheticEvent } from "react-native";
-import type { ContextMenuOnPressNativeEvent } from "react-native-context-menu-view";
-import React from "react";
-import ContextMenu from "react-native-context-menu-view";
+import React, { useState } from "react";
 import { TouchableOpacity } from "react-native-gesture-handler";
+import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { Image, Text, View, XStack, YStack } from "tamagui";
 
+import type { Action } from "./item/ContextMenu";
 import type { Download, DownloadContent } from "~/hooks/useDownloadManager";
 import { useDownloadManager } from "~/hooks/useDownloadManager";
+import { ContextMenuActions, SheetContextMenu } from "./item/ContextMenu";
 import { mapSeasonAndEpisodeNumberToText } from "./player/utils";
 import { MWProgress } from "./ui/Progress";
 import { FlashingText } from "./ui/Text";
@@ -15,11 +15,6 @@ import { FlashingText } from "./ui/Text";
 export interface DownloadItemProps {
   item: Download;
   onPress: (localPath?: string) => void;
-}
-
-enum ContextMenuActions {
-  Cancel = "Cancel",
-  Remove = "Remove",
 }
 
 const statusToTextMap: Record<Download["status"], string> = {
@@ -45,25 +40,27 @@ export function DownloadItem(props: DownloadItemProps) {
   const formattedFileSize = formatBytes(props.item.fileSize);
   const formattedDownloaded = formatBytes(props.item.downloaded);
   const { removeDownload, cancelDownload } = useDownloadManager();
+  const [menuOpen, setMenuOpen] = useState(false);
 
-  const contextMenuActions = [
+  const handleLongPress = () => {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    setMenuOpen(true);
+  };
+
+  const contextMenuActions: Action[] = [
     {
       title: ContextMenuActions.Remove,
+      onPress: () => removeDownload(props.item),
     },
     ...(props.item.status !== "finished"
-      ? [{ title: ContextMenuActions.Cancel }]
+      ? [
+          {
+            title: ContextMenuActions.Cancel,
+            onPress: () => cancelDownload(props.item),
+          },
+        ]
       : []),
   ];
-
-  const onContextMenuPress = (
-    e: NativeSyntheticEvent<ContextMenuOnPressNativeEvent>,
-  ) => {
-    if (e.nativeEvent.name === ContextMenuActions.Cancel) {
-      void cancelDownload(props.item);
-    } else if (e.nativeEvent.name === ContextMenuActions.Remove) {
-      removeDownload(props.item);
-    }
-  };
 
   const isInProgress = !(
     props.item.status === "finished" ||
@@ -72,80 +69,77 @@ export function DownloadItem(props: DownloadItemProps) {
   );
 
   return (
-    <ContextMenu
-      actions={contextMenuActions}
-      onPress={onContextMenuPress}
-      previewBackgroundColor="transparent"
+    <TouchableOpacity
+      onPress={() => props.onPress(props.item.localPath)}
+      onLongPress={handleLongPress}
+      activeOpacity={0.7}
     >
-      <TouchableOpacity
-        onPress={() => props.onPress(props.item.localPath)}
-        onLongPress={() => {
-          return;
-        }}
-        activeOpacity={0.7}
-      >
-        <XStack gap="$4" alignItems="center">
-          <View
-            aspectRatio={9 / 14}
-            width={70}
-            maxHeight={180}
-            overflow="hidden"
-            borderRadius="$2"
-          >
-            <Image
-              source={{
-                uri: "https://image.tmdb.org/t/p/original//or06FN3Dka5tukK1e9sl16pB3iy.jpg",
-              }}
-              width="100%"
-              height="100%"
-            />
-          </View>
-          <YStack gap="$2" flex={1}>
-            <XStack justifyContent="space-between" alignItems="center">
-              <Text
-                fontWeight="$bold"
-                numberOfLines={1}
-                ellipsizeMode="tail"
-                flex={1}
-              >
-                {props.item.media.type === "show" &&
-                  `${mapSeasonAndEpisodeNumberToText(
-                    props.item.media.season.number,
-                    props.item.media.episode.number,
-                  )} `}
-                {props.item.media.title}
-              </Text>
-              {props.item.type !== "hls" && (
-                <Text fontSize="$2" color="gray">
-                  {props.item.speed.toFixed(2)} MB/s
-                </Text>
-              )}
-            </XStack>
-            <MWProgress value={percentage} height={10} maxWidth="100%">
-              <MWProgress.Indicator />
-            </MWProgress>
-            <XStack alignItems="center" justifyContent="space-between">
+      <XStack gap="$4" alignItems="center">
+        <View
+          aspectRatio={9 / 14}
+          width={70}
+          maxHeight={180}
+          overflow="hidden"
+          borderRadius="$2"
+        >
+          <Image
+            source={{
+              uri: "https://image.tmdb.org/t/p/original//or06FN3Dka5tukK1e9sl16pB3iy.jpg",
+            }}
+            width="100%"
+            height="100%"
+          />
+        </View>
+        <YStack gap="$2" flex={1}>
+          <XStack justifyContent="space-between" alignItems="center">
+            <Text
+              fontWeight="$bold"
+              numberOfLines={1}
+              ellipsizeMode="tail"
+              flex={1}
+            >
+              {props.item.media.type === "show" &&
+                `${mapSeasonAndEpisodeNumberToText(
+                  props.item.media.season.number,
+                  props.item.media.episode.number,
+                )} `}
+              {props.item.media.title}
+            </Text>
+            {props.item.type !== "hls" && (
               <Text fontSize="$2" color="gray">
-                {props.item.type === "hls"
-                  ? `${percentage.toFixed()}% - ${props.item.downloaded} of ${props.item.fileSize} segments`
-                  : `${percentage.toFixed()}% - ${formattedDownloaded} of ${formattedFileSize}`}
+                {props.item.speed.toFixed(2)} MB/s
               </Text>
-              <View style={{ flexDirection: "row", alignItems: "center" }}>
-                <FlashingText
-                  isInProgress={isInProgress}
-                  style={{
-                    fontSize: 12,
-                    color: "gray",
-                  }}
-                >
-                  {statusToTextMap[props.item.status]}
-                </FlashingText>
-              </View>
-            </XStack>
-          </YStack>
-        </XStack>
-      </TouchableOpacity>
-    </ContextMenu>
+            )}
+          </XStack>
+          <MWProgress value={percentage} height={10} maxWidth="100%">
+            <MWProgress.Indicator />
+          </MWProgress>
+          <XStack alignItems="center" justifyContent="space-between">
+            <Text fontSize="$2" color="gray">
+              {props.item.type === "hls"
+                ? `${percentage.toFixed()}% - ${props.item.downloaded} of ${props.item.fileSize} segments`
+                : `${percentage.toFixed()}% - ${formattedDownloaded} of ${formattedFileSize}`}
+            </Text>
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <FlashingText
+                isInProgress={isInProgress}
+                style={{
+                  fontSize: 12,
+                  color: "gray",
+                }}
+              >
+                {statusToTextMap[props.item.status]}
+              </FlashingText>
+            </View>
+          </XStack>
+        </YStack>
+      </XStack>
+      <SheetContextMenu
+        isOpen={menuOpen}
+        actions={contextMenuActions}
+        onClose={() => setMenuOpen(false)}
+      />
+    </TouchableOpacity>
   );
 }
 

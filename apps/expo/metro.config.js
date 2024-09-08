@@ -1,5 +1,6 @@
 // Learn more: https://docs.expo.dev/guides/monorepos/
 const { getDefaultConfig } = require("expo/metro-config");
+const { mergeConfig } = require("metro-config");
 const { FileStore } = require("metro-cache");
 const { withTamagui } = require("@tamagui/metro-plugin");
 
@@ -8,9 +9,20 @@ const path = require("path");
 module.exports = withTurborepoManagedCache(
   withMonorepoPaths(
     withTamagui(
-      getDefaultConfig(__dirname, {
-        isCSSEnabled: true,
-      }),
+      mergeConfig(
+        getDefaultConfig(__dirname, {
+          isCSSEnabled: true,
+        }),
+        {
+          transformer: {
+            getTransformOptions: async () => ({
+              transform: {
+                inlineRequires: true,
+              },
+            }),
+          },
+        },
+      ),
       {
         components: ["tamagui"],
         config: "./tamagui.config.ts",

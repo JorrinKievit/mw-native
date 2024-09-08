@@ -33,16 +33,17 @@ const VideoSlider = ({ onSlidingComplete }: VideoSliderProps) => {
   const theme = useTheme();
   const tapRef = useRef<TapGestureHandler>(null);
   const panRef = useRef<PanGestureHandler>(null);
-  const status = usePlayerStore((state) => state.status);
+  const player = usePlayerStore((state) => state.player);
   const setIsIdle = usePlayerStore((state) => state.setIsIdle);
 
   const width = Dimensions.get("screen").width - 120;
   const knobSize_ = 20;
   const trackSize_ = 8;
   const minimumValue = 0;
-  const maximumValue = status?.isLoaded ? status.durationMillis! : 0;
-  const value = status?.isLoaded ? status.positionMillis : 0;
-  const bufferValue = status?.isLoaded ? status.playableDurationMillis : 0;
+  const maximumValue = player?.duration ?? 0 * 1000;
+  const value = player?.currentTime ?? 0 * 1000;
+  // TODO: Buffers are not yet implemented in expo-video
+  const bufferValue = 0;
 
   const valueToX = (v: number) => {
     if (maximumValue === minimumValue) return 0;
@@ -56,7 +57,7 @@ const VideoSlider = ({ onSlidingComplete }: VideoSliderProps) => {
   const valueX = valueToX(value);
   const translateX = useSharedValue(valueToX(value));
   const isDragging = useSharedValue(false);
-  const bufferTranslateX = useSharedValue(valueToX(bufferValue!));
+  const bufferTranslateX = useSharedValue(valueToX(bufferValue));
 
   useEffect(() => {
     if (!isDragging.value) {
@@ -115,7 +116,7 @@ const VideoSlider = ({ onSlidingComplete }: VideoSliderProps) => {
   const bufferStyle = useAnimatedStyle(() => {
     return {
       width: bufferTranslateX.value + knobSize_,
-      backgroundColor: "rgba(255, 255, 255, 0.5)",
+      backgroundColor: theme.ash100.val,
       borderRadius: trackSize_ / 2,
     };
   });
@@ -125,7 +126,7 @@ const VideoSlider = ({ onSlidingComplete }: VideoSliderProps) => {
       ref={tapRef}
       onHandlerStateChange={onTapEvent}
       simultaneousHandlers={panRef}
-      enabled={status?.isLoaded}
+      enabled={player?.status === "readyToPlay"}
     >
       <View
         style={[
@@ -155,6 +156,7 @@ const VideoSlider = ({ onSlidingComplete }: VideoSliderProps) => {
                 height: trackSize_,
                 backgroundColor: theme.videoSliderFilled.val,
                 borderRadius: trackSize_ / 2,
+                zIndex: 1,
               },
               progressStyle,
             ]}

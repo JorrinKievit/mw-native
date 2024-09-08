@@ -1,6 +1,6 @@
-import type { AVPlaybackStatus } from "expo-av";
+import type { VideoPlayer as VideoPlayerType } from "expo-video";
 import type { SharedValue } from "react-native-reanimated";
-import { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Dimensions, Platform } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
@@ -9,12 +9,15 @@ import Animated, {
   useSharedValue,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { ResizeMode, Video } from "expo-av";
+import { ResizeMode } from "expo-av";
 import * as Haptics from "expo-haptics";
+import { useKeepAwake } from "expo-keep-awake";
+import { requireNativeModule } from "expo-modules-core";
 import * as NavigationBar from "expo-navigation-bar";
 import * as Network from "expo-network";
 import { useRouter } from "expo-router";
 import * as StatusBar from "expo-status-bar";
+import { VideoView } from "expo-video";
 import { Feather } from "@expo/vector-icons";
 import { Spinner, useTheme, View } from "tamagui";
 
@@ -22,7 +25,6 @@ import { findHLSQuality, findQuality } from "@movie-web/provider-utils";
 
 import { useAudioTrack } from "~/hooks/player/useAudioTrack";
 import { useBrightness } from "~/hooks/player/useBrightness";
-import { usePlaybackSpeed } from "~/hooks/player/usePlaybackSpeed";
 import { usePlayer } from "~/hooks/player/usePlayer";
 import { useVolume } from "~/hooks/player/useVolume";
 import {
@@ -41,7 +43,13 @@ import {
 import { CaptionRenderer } from "./CaptionRenderer";
 import { ControlsOverlay } from "./ControlsOverlay";
 
+const ExpoVideoPlayer =
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+  requireNativeModule("ExpoVideo").VideoPlayer as VideoPlayerType;
+
 export const VideoPlayer = () => {
+  useKeepAwake();
+
   const {
     brightness,
     showBrightnessOverlay,
@@ -50,26 +58,20 @@ export const VideoPlayer = () => {
   } = useBrightness();
   const { volume, showVolumeOverlay, setShowVolumeOverlay } = useVolume();
 
-  const { currentSpeed } = usePlaybackSpeed();
   const { synchronizePlayback } = useAudioTrack();
   const { dismissFullscreenPlayer } = usePlayer();
   const [isLoading, setIsLoading] = useState(true);
   const [resizeMode, setResizeMode] = useState(ResizeMode.CONTAIN);
-  const [hasStartedPlaying, setHasStartedPlaying] = useState(false);
   const router = useRouter();
 
   const scale = useSharedValue(1);
 
-  const state = usePlayerStore((state) => state.interface.state);
   const isIdle = usePlayerStore((state) => state.interface.isIdle);
   const stream = usePlayerStore((state) => state.interface.currentStream);
   const selectedAudioTrack = useAudioTrackStore((state) => state.selectedTrack);
-  const videoRef = usePlayerStore((state) => state.videoRef);
-  const setVideoRef = usePlayerStore((state) => state.setVideoRef);
-  const videoSrc = usePlayerStore((state) => state.videoSrc) ?? undefined;
+  const videoSrc = usePlayerStore((state) => state.videoSrc);
   const setVideoSrc = usePlayerStore((state) => state.setVideoSrc);
-  const setStatus = usePlayerStore((state) => state.setStatus);
-  const status = usePlayerStore((state) => state.status);
+  const setVideoPlayer = usePlayerStore((state) => state.setVideoPlayer);
   const setIsIdle = usePlayerStore((state) => state.setIsIdle);
   const toggleAudio = usePlayerStore((state) => state.toggleAudio);
   const toggleState = usePlayerStore((state) => state.toggleState);
@@ -82,6 +84,43 @@ export const VideoPlayer = () => {
     useWatchHistoryStore();
   const { wifiDefaultQuality, mobileDataDefaultQuality } =
     useNetworkSettingsStore();
+
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+  const player: VideoPlayerType = useMemo(
+    // @ts-expect-error - ExpoVideoPlayer is not a valid component
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+    () => new ExpoVideoPlayer(videoSrc),
+    [videoSrc],
+  );
+
+  useEffect(() => {
+    if (player) {
+      setVideoPlayer(player);
+    }
+  }, [player, setVideoPlayer]);
+
+  useEffect(() => {
+    const statusListener = player.addListener("statusChange", (status) => {
+      if (status === "readyToPlay") {
+        player.play();
+      }
+    });
+
+    return () => {
+      statusListener.remove();
+    };
+  }, [getWatchHistoryItem, meta, player]);
+
+  useEffect(() => {
+    if (meta && player.status === "readyToPlay" && player.currentTime < 1) {
+      const media = convertMetaToScrapeMedia(meta);
+      const watchHistoryItem = getWatchHistoryItem(media);
+      if (watchHistoryItem) {
+        player.currentTime = watchHistoryItem.positionMillis / 1000;
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [player.status]);
 
   const updateResizeMode = (newMode: ResizeMode) => {
     setResizeMode(newMode);
@@ -154,9 +193,10 @@ export const VideoPlayer = () => {
     void NavigationBar.setVisibilityAsync("hidden");
   }
 
+  // TODO: Rerender with player.currentTime on this function call throws an error in expo-video
   useEffect(() => {
     const initializePlayer = async () => {
-      if (videoSrc?.uri && isLocalFile) return;
+      if (isLocalFile) return;
 
       if (!stream) {
         await dismissFullscreenPlayer();
@@ -200,29 +240,18 @@ export const VideoPlayer = () => {
 
     void initializePlayer();
 
-    const timeout = setTimeout(() => {
-      if (!hasStartedPlaying) {
-        router.back();
-      }
-    }, 60000);
-
     return () => {
       if (meta) {
         const item = convertMetaToItemData(meta);
         const scrapeMedia = convertMetaToScrapeMedia(meta);
-        updateWatchHistory(
-          item,
-          scrapeMedia,
-          videoRef?.props.positionMillis ?? 0,
-        );
+        updateWatchHistory(item, scrapeMedia, player.currentTime);
       }
-      clearTimeout(timeout);
       void synchronizePlayback();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     isLocalFile,
     dismissFullscreenPlayer,
-    hasStartedPlaying,
     meta,
     router,
     selectedAudioTrack,
@@ -230,57 +259,42 @@ export const VideoPlayer = () => {
     stream,
     synchronizePlayback,
     updateWatchHistory,
-    videoRef?.props.positionMillis,
-    videoSrc?.uri,
     wifiDefaultQuality,
     mobileDataDefaultQuality,
   ]);
 
-  const onVideoLoadStart = () => {
-    setIsLoading(true);
-  };
-
-  const onReadyForDisplay = () => {
-    setIsLoading(false);
-    setHasStartedPlaying(true);
-    if (videoRef) {
-      void videoRef.setRateAsync(currentSpeed, true);
-
-      if (meta) {
-        const media = convertMetaToScrapeMedia(meta);
-        const watchHistoryItem = getWatchHistoryItem(media);
-
-        if (watchHistoryItem) {
-          void videoRef.setPositionAsync(watchHistoryItem.positionMillis);
-        }
+  useEffect(() => {
+    const playerStatusChange = player.addListener("statusChange", (status) => {
+      if (status === "readyToPlay") {
+        player.play();
       }
-    }
-  };
 
-  const onPlaybackStatusUpdate = async (status: AVPlaybackStatus) => {
-    setStatus(status);
-    if (meta && status.isLoaded && status.didJustFinish) {
-      const item = convertMetaToItemData(meta);
-      removeFromWatchHistory(item);
-    }
-    if (
-      status.isLoaded &&
-      status.didJustFinish &&
-      !status.isLooping &&
-      autoPlay
-    ) {
-      if (meta?.type !== "show") return;
-      const nextEpisodeMeta = await getNextEpisode(meta);
-      if (!nextEpisodeMeta) return;
-      setMeta(nextEpisodeMeta);
-      const media = convertMetaToScrapeMedia(nextEpisodeMeta);
+      const isFinished = player.duration - player.currentTime < 1;
+      if (meta && status === "idle" && meta.type === "movie" && isFinished) {
+        const item = convertMetaToItemData(meta);
+        removeFromWatchHistory(item);
+      }
 
-      router.replace({
-        pathname: "/videoPlayer",
-        params: { media: JSON.stringify(media) },
-      });
-    }
-  };
+      if (autoPlay && status === "idle" && meta?.type === "show") {
+        getNextEpisode(meta)
+          .then((nextEpisodeMeta) => {
+            if (!nextEpisodeMeta) return;
+            setMeta(nextEpisodeMeta);
+            const media = convertMetaToScrapeMedia(nextEpisodeMeta);
+
+            router.replace({
+              pathname: "/videoPlayer",
+              params: { media: JSON.stringify(media) },
+            });
+          })
+          .catch(console.error);
+      }
+    });
+
+    return () => {
+      playerStatusChange.remove();
+    };
+  }, [player, meta, removeFromWatchHistory, autoPlay, setMeta, router]);
 
   return (
     <GestureDetector gesture={composedGesture}>
@@ -291,16 +305,8 @@ export const VideoPlayer = () => {
         justifyContent="center"
         backgroundColor="black"
       >
-        <Video
-          ref={setVideoRef}
-          source={videoSrc}
-          shouldPlay={state === "playing"}
-          resizeMode={resizeMode}
-          volume={volume.value}
-          rate={currentSpeed}
-          onLoadStart={onVideoLoadStart}
-          onReadyForDisplay={onReadyForDisplay}
-          onPlaybackStatusUpdate={onPlaybackStatusUpdate}
+        <VideoView
+          player={player}
           style={[
             {
               position: "absolute",
@@ -313,6 +319,7 @@ export const VideoPlayer = () => {
               }),
             },
           ]}
+          nativeControls={false}
           onTouchStart={() => setIsIdle(!isIdle)}
         />
         <View
@@ -321,10 +328,7 @@ export const VideoPlayer = () => {
           alignItems="center"
           justifyContent="center"
         >
-          {isLoading ||
-          (status?.isLoaded &&
-            status.positionMillis >= status.playableDurationMillis! &&
-            isIdle) ? (
+          {isLoading ? (
             <Spinner size="large" color="white" position="absolute" />
           ) : null}
 
@@ -358,8 +362,8 @@ function GestureOverlay(props: {
   return (
     <View
       position="absolute"
-      left={props.type === "brightness" ? insets.left + 20 : undefined}
-      right={props.type === "volume" ? insets.right + 20 : undefined}
+      left={props.type === "volume" ? insets.left + 20 : undefined}
+      right={props.type === "brightness" ? insets.right + 20 : undefined}
       borderRadius="$4"
       gap={8}
       height="50%"

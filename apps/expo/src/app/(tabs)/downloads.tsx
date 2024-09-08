@@ -2,7 +2,7 @@ import React from "react";
 import { Alert, Platform } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { isDevelopmentProvisioningProfile } from "modules/check-ios-certificate";
+import { getAppId, isIncorrectAppId } from "modules/check-ios-app-id";
 import { ScrollView, useTheme, YStack } from "tamagui";
 
 import type { ScrapeMedia } from "@movie-web/provider-utils";
@@ -81,10 +81,11 @@ const DownloadsScreen: React.FC = () => {
 
   useFocusEffect(
     React.useCallback(() => {
-      if (Platform.OS === "ios" && !isDevelopmentProvisioningProfile()) {
+      if (Platform.OS === "ios" && isIncorrectAppId()) {
+        const appId = getAppId();
         Alert.alert(
-          "Production Certificate",
-          "Download functionality is not available when the application is signed with a distribution certificate.",
+          "Wildcard/Mismatching App ID",
+          `The application is signed with a wildcard or mismatching App ID (${appId}). Download functionality is not available when the application is signed with a wildcard or mismatching App ID.`,
           [
             {
               text: "OK",
@@ -148,14 +149,10 @@ const DownloadsScreen: React.FC = () => {
                 onPress={() => handlePress(download.downloads[0]!.localPath)}
               />
             );
-          } else {
-            return (
-              <ShowDownloadItem
-                key={download.media.tmdbId}
-                download={download}
-              />
-            );
           }
+          return (
+            <ShowDownloadItem key={download.media.tmdbId} download={download} />
+          );
         })}
       </ScrollView>
     </ScreenLayout>

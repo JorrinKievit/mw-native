@@ -1,4 +1,4 @@
-import type { AVPlaybackSourceObject, AVPlaybackStatus, Video } from "expo-av";
+import type { VideoPlayer, VideoSource } from "expo-video";
 
 import type { MakeSlice } from "./types";
 import { PlayerStatus } from "./interface";
@@ -26,38 +26,31 @@ export interface PlayerMeta {
 }
 
 export interface VideoSlice {
-  videoRef: Video | null;
-  videoSrc: AVPlaybackSourceObject | null;
-  status: AVPlaybackStatus | null;
+  player: VideoPlayer | null;
+  videoSrc: Exclude<VideoSource, string> | null;
   meta: PlayerMeta | null;
   isLocalFile: boolean;
 
-  setVideoRef(ref: Video | null): void;
-  setVideoSrc(src: AVPlaybackSourceObject | null): void;
-  setStatus(status: AVPlaybackStatus | null): void;
+  setVideoPlayer(player: VideoPlayer | null): void;
+  setVideoSrc(src: Exclude<VideoSource, string> | null): void;
   setMeta(meta: PlayerMeta | null): void;
   setIsLocalFile(isLocalFile: boolean): void;
   resetVideo(): void;
 }
 
 export const createVideoSlice: MakeSlice<VideoSlice> = (set) => ({
-  videoRef: null,
+  player: null,
   videoSrc: null,
   status: null,
   meta: null,
   isLocalFile: false,
 
-  setVideoRef: (ref) => {
-    set({ videoRef: ref });
+  setVideoPlayer: (player) => {
+    set({ player });
   },
   setVideoSrc: (src) => {
     set((s) => {
       s.videoSrc = src;
-    });
-  },
-  setStatus: (status) => {
-    set((s) => {
-      s.status = status;
     });
   },
   setMeta: (meta) => {
@@ -70,9 +63,17 @@ export const createVideoSlice: MakeSlice<VideoSlice> = (set) => ({
     set({ isLocalFile });
   },
   resetVideo() {
-    set({ videoRef: null, status: null, meta: null, isLocalFile: false });
     set((s) => {
-      s.interface.playerStatus = PlayerStatus.SCRAPING;
+      s.player?.release();
+      return {
+        meta: null,
+        isLocalFile: false,
+        videoSrc: null,
+        player: null,
+        interface: {
+          playerStatus: PlayerStatus.SCRAPING,
+        },
+      };
     });
   },
 });

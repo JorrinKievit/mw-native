@@ -1,4 +1,3 @@
-import type { Video } from "expo-av";
 import { useCallback, useEffect } from "react";
 import { Audio } from "expo-av";
 
@@ -8,7 +7,7 @@ import type { AudioTrack } from "~/components/player/AudioTrackSelector";
 import { usePlayerStore } from "~/stores/player/store";
 
 export const useAudioTrack = () => {
-  const videoRef = usePlayerStore((state) => state.videoRef);
+  const player = usePlayerStore((state) => state.player);
   const audioObject = usePlayerStore((state) => state.audioObject);
   const currentAudioTrack = usePlayerStore((state) => state.currentAudioTrack);
   const setAudioObject = usePlayerStore((state) => state.setAudioObject);
@@ -60,29 +59,30 @@ export const useAudioTrack = () => {
     [audioObject, setAudioObject, setCurrentAudioTrack],
   );
 
-  const synchronizeAudioWithVideo = async (
-    videoRef: Video | null,
-    audioObject: Audio.Sound | null,
-    selectedAudioTrack?: AudioTrack,
-  ): Promise<void> => {
-    if (videoRef && audioObject) {
-      const videoStatus = await videoRef.getStatusAsync();
-
-      if (selectedAudioTrack && videoStatus.isLoaded) {
-        await videoRef.setIsMutedAsync(true);
-        await audioObject.playAsync();
-        await audioObject.setPositionAsync(videoStatus.positionMillis + 2000);
-      } else {
-        await videoRef.setIsMutedAsync(false);
+  const synchronizeAudioWithVideo = useCallback(
+    async (
+      audioObject: Audio.Sound | null,
+      selectedAudioTrack?: AudioTrack,
+    ) => {
+      if (player && audioObject) {
+        if (selectedAudioTrack) {
+          player.volume = 0;
+          await audioObject.playAsync();
+          await audioObject.setPositionAsync(player.currentTime * 1000);
+        } else {
+          player.volume = 1;
+          await audioObject.pauseAsync();
+        }
       }
-    }
-  };
+    },
+    [player],
+  );
 
   useEffect(() => {
     if (audioObject && currentAudioTrack) {
-      void synchronizeAudioWithVideo(videoRef, audioObject, currentAudioTrack);
+      void synchronizeAudioWithVideo(audioObject, currentAudioTrack);
     }
-  }, [audioObject, videoRef, currentAudioTrack]);
+  }, [audioObject, currentAudioTrack, synchronizeAudioWithVideo]);
 
   return { synchronizePlayback };
 };
