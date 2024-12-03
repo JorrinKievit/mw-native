@@ -36,7 +36,7 @@ const formatBytes = (bytes: number, decimals = 2) => {
 };
 
 export function DownloadItem(props: DownloadItemProps) {
-  const percentage = props.item.progress * 100;
+  const percentage = Math.round(props.item.progress * 100);
   const formattedFileSize = formatBytes(props.item.fileSize);
   const formattedDownloaded = formatBytes(props.item.downloaded);
   const { removeDownload, cancelDownload } = useDownloadManager();

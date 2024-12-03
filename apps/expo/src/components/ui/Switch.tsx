@@ -1,27 +1,29 @@
-import type { SwitchProps, SwitchThumbProps } from "tamagui";
-import { Switch, useTheme } from "tamagui";
+import { styled, Switch, withStaticProperties } from "tamagui";
 
-const MWSwitch = (props: SwitchProps) => {
-  const theme = useTheme();
-  return (
-    <Switch
-      native
-      nativeProps={{
-        trackColor: {
-          true: theme.switchActiveTrackColor.val,
-          false: theme.switchInactiveTrackColor.val,
+const MWSwitchFrame = styled(Switch, {
+  variants: {
+    type: {
+      default: {
+        native: true,
+        nativeProps: {
+          trackColor: {
+            true: "$purple300",
+            false: "$ash500",
+          },
+          thumbColor: "white",
         },
-        thumbColor: theme.switchThumbColor.val,
-      }}
-      {...(props as any)}
-    />
-  );
-};
+      },
+    },
+  },
+  defaultVariants: {
+    type: "default",
+  },
+});
 
-const MWSwitchThumb = (props: SwitchThumbProps) => {
-  return <Switch.Thumb animation="bounce" {...props} />;
-};
-
-MWSwitch.Thumb = MWSwitchThumb;
+const MWSwitch = withStaticProperties(MWSwitchFrame, {
+  Thumb: styled(Switch.Thumb, {
+    animation: "bounce",
+  }),
+});
 
 export { MWSwitch };

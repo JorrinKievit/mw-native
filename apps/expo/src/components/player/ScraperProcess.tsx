@@ -95,6 +95,7 @@ export const ScraperProcess = ({
             ...streamResult.stream.headers,
           },
         );
+        console.log("Tracks", tracks);
 
         if (tracks) setHlsTracks(tracks);
 

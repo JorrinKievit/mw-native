@@ -111,8 +111,8 @@ export default function SearchScreen() {
           justifyContent: "center",
         }}
       >
-        <Animated.View style={[searchResultsStyle, { flex: 1 }]}>
-          <View flexDirection="row" flexWrap="wrap">
+        <Animated.View style={[searchResultsStyle, { flex: 1, width: "100%" }]}>
+          <View flex={1} flexDirection="row" flexWrap="wrap">
             {data?.map((item, index) => (
               <View
                 key={index}

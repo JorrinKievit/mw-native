@@ -239,6 +239,7 @@ export const useSourceScrape = (sourceId: string | null) => {
         sourceId,
         media: scrapeMedia,
       });
+      console.log(result);
 
       if (result?.stream) {
         setCurrentStream(result.stream[0]!);

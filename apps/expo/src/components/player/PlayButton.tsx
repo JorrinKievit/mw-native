@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEvent } from "expo";
 import { FontAwesome } from "@expo/vector-icons";
 import { Spinner } from "tamagui";
 
@@ -6,25 +6,18 @@ import { usePlayerStore } from "~/stores/player/store";
 
 export const PlayButton = () => {
   const player = usePlayerStore((state) => state.player);
-  const playAudio = usePlayerStore((state) => state.playAudio);
-  const pauseAudio = usePlayerStore((state) => state.pauseAudio);
+  const audioPlayer = usePlayerStore((state) => state.audioPlayer);
 
-  const [isPlaying, setIsPlaying] = useState(player?.playing ?? false);
-  const [isLoading, setIsLoading] = useState(false);
-
-  useEffect(() => {
-    const statusListener = player?.addListener("statusChange", (data) => {
-      setIsLoading(data.status === "loading");
-    });
-
-    return () => {
-      statusListener?.remove();
-    };
-  }, [player]);
+  const { isPlaying } = useEvent(player!, "playingChange", {
+    isPlaying: player!.playing,
+  });
+  const { status } = useEvent(player!, "statusChange", {
+    status: player!.status,
+  });
 
   if (!player) return null;
 
-  if (isLoading) {
+  if (status === "loading") {
     return <Spinner size="large" color="white" />;
   }
 
@@ -34,15 +27,10 @@ export const PlayButton = () => {
       size={36}
       color="white"
       onPress={() => {
-        if (player.playing) {
-          player.pause();
-          void pauseAudio();
-          setIsPlaying(false);
-        } else {
-          player.play();
-          void playAudio();
-          setIsPlaying(true);
-        }
+        console.log("video player playing", player.playing);
+        console.log("audio player playing", audioPlayer?.playing);
+        player.playing ? player.pause() : player.play();
+        audioPlayer?.playing ? audioPlayer?.pause() : audioPlayer?.play();
       }}
     />
   );

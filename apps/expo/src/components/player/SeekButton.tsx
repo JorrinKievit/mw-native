@@ -8,9 +8,7 @@ interface SeekProps {
 
 export const SeekButton = ({ type }: SeekProps) => {
   const player = usePlayerStore((state) => state.player);
-  const setAudioPositionAsync = usePlayerStore(
-    (state) => state.setAudioPositionAsync,
-  );
+  const audioPlayer = usePlayerStore((state) => state.audioPlayer);
 
   if (!player) return null;
 
@@ -24,7 +22,8 @@ export const SeekButton = ({ type }: SeekProps) => {
           type === "forward"
             ? player.currentTime + 10
             : player.currentTime - 10;
-        void setAudioPositionAsync(player.currentTime);
+
+        if (audioPlayer) audioPlayer.currentTime = player.currentTime;
       }}
     />
   );

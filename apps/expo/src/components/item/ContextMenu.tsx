@@ -1,3 +1,4 @@
+import type { ComponentProps } from "react";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Sheet, useTheme } from "tamagui";
 
@@ -11,6 +12,8 @@ export enum ContextMenuActions {
   Cancel = "Cancel",
   Remove = "Remove",
 }
+
+type IconName = ComponentProps<typeof MaterialCommunityIcons>["name"];
 
 export interface Action {
   title: ContextMenuActions;
@@ -30,13 +33,8 @@ export const SheetContextMenu: React.FC<SheetContextMenuProps> = ({
 }) => {
   const theme = useTheme();
 
-  type IconName =
-    | "bookmark-outline"
-    | "bookmark-off-outline"
-    | "download-outline"
-    | "clock-remove-outline";
-
   const iconMap: Record<string, IconName> = {
+    [ContextMenuActions.Remove]: "delete-outline",
     [ContextMenuActions.Bookmark]: "bookmark-outline",
     [ContextMenuActions.RemoveBookmark]: "bookmark-off-outline",
     [ContextMenuActions.Download]: "download-outline",
@@ -70,7 +68,7 @@ export const SheetContextMenu: React.FC<SheetContextMenuProps> = ({
             <Settings.Item
               key={index}
               title={action.title}
-              iconRight={
+              iconLeft={
                 <MaterialCommunityIcons
                   name={iconMap[action.title]}
                   size={24}

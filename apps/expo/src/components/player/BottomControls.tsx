@@ -66,12 +66,15 @@ export const BottomControls = () => {
 
     const subscription = player?.addListener("timeUpdate", (payload) => {
       setLocalCurrentTime(payload.currentTime);
+      if (localDuration === 0) {
+        setLocalDuration(player.duration);
+      }
     });
 
     return () => {
       subscription?.remove();
     };
-  }, [player]);
+  }, [player, localDuration]);
 
   return (
     <Animated.View style={[animatedStyle, { height: 148 }]}>

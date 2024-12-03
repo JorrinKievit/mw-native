@@ -1,6 +1,10 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import {
+  configureReanimatedLogger,
+  ReanimatedLogLevel,
+} from "react-native-reanimated";
 import { useFonts } from "expo-font";
 import { SplashScreen, Stack } from "expo-router";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
@@ -25,6 +29,11 @@ export const unstable_settings = {
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync().catch(() => {
   /* reloading the app might trigger this, so it's safe to ignore */
+});
+
+configureReanimatedLogger({
+  level: ReanimatedLogLevel.warn,
+  strict: false,
 });
 
 const queryClient = new QueryClient();

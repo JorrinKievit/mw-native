@@ -1,15 +1,10 @@
 import type { SharedValue } from "react-native-reanimated";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Dimensions, Platform } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
-import Animated, {
-  runOnJS,
-  useAnimatedStyle,
-  useSharedValue,
-} from "react-native-reanimated";
+import Animated, { runOnJS, useAnimatedStyle } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { ResizeMode } from "expo-av";
-import * as Haptics from "expo-haptics";
+import { createAudioPlayer } from "expo-audio";
 import { useKeepAwake } from "expo-keep-awake";
 import * as NavigationBar from "expo-navigation-bar";
 import * as Network from "expo-network";
@@ -19,9 +14,13 @@ import { createVideoPlayer, VideoView } from "expo-video";
 import { Feather } from "@expo/vector-icons";
 import { Spinner, useTheme, View } from "tamagui";
 
-import { findHLSQuality, findQuality } from "@movie-web/provider-utils";
+import {
+  extractTracksFromHLS,
+  filterAudioTracks,
+  findHLSQuality,
+  findQuality,
+} from "@movie-web/provider-utils";
 
-import { useAudioTrack } from "~/hooks/player/useAudioTrack";
 import { useBrightness } from "~/hooks/player/useBrightness";
 import { usePlayer } from "~/hooks/player/usePlayer";
 import { useVolume } from "~/hooks/player/useVolume";
@@ -52,13 +51,9 @@ export const VideoPlayer = () => {
   } = useBrightness();
   const { volume, showVolumeOverlay, setShowVolumeOverlay } = useVolume();
 
-  const { synchronizePlayback } = useAudioTrack();
   const { dismissFullscreenPlayer } = usePlayer();
   const [isLoading, setIsLoading] = useState(true);
-  const [resizeMode, setResizeMode] = useState(ResizeMode.CONTAIN);
   const router = useRouter();
-
-  const scale = useSharedValue(1);
 
   const isIdle = usePlayerStore((state) => state.interface.isIdle);
   const stream = usePlayerStore((state) => state.interface.currentStream);
@@ -66,9 +61,11 @@ export const VideoPlayer = () => {
   const videoSrc = usePlayerStore((state) => state.videoSrc);
   const setVideoSrc = usePlayerStore((state) => state.setVideoSrc);
   const setVideoPlayer = usePlayerStore((state) => state.setVideoPlayer);
+  const setAudioPlayer = usePlayerStore((state) => state.setAudioPlayer);
   const setIsIdle = usePlayerStore((state) => state.setIsIdle);
-  const toggleAudio = usePlayerStore((state) => state.toggleAudio);
   const toggleState = usePlayerStore((state) => state.toggleState);
+  const setHlsTracks = usePlayerStore((state) => state.setHlsTracks);
+  const setAudioTracks = usePlayerStore((state) => state.setAudioTracks);
   const meta = usePlayerStore((state) => state.meta);
   const setMeta = usePlayerStore((state) => state.setMeta);
   const isLocalFile = usePlayerStore((state) => state.isLocalFile);
@@ -79,29 +76,33 @@ export const VideoPlayer = () => {
   const { wifiDefaultQuality, mobileDataDefaultQuality } =
     useNetworkSettingsStore();
 
-  const player = useMemo(() => createVideoPlayer(videoSrc), [videoSrc]);
+  const player = useMemo(() => createVideoPlayer(videoSrc ?? null), [videoSrc]);
+  // const audioPlayer = useMemo(
+  //   () => createAudioPlayer(selectedAudioTrack?.uri ?? ""),
+  //   [selectedAudioTrack],
+  // );
+  const audioPlayer = usePlayerStore((state) => state.audioPlayer);
 
   useEffect(() => {
     if (player) {
+      player.audioMixingMode = "mixWithOthers";
       player.timeUpdateEventInterval = 1;
       setVideoPlayer(player);
     }
-  }, [player, setVideoPlayer]);
 
-  useEffect(() => {
-    const statusListener = player.addListener("statusChange", (data) => {
-      if (data.status === "readyToPlay") {
-        player.play();
-      }
-    });
+    // if (audioPlayer) {
+    //   setAudioPlayer(audioPlayer);
+    // }
 
     return () => {
-      statusListener.remove();
+      console.log("releasing players");
+      // player?.release();
+      // audioPlayer?.release();
     };
-  }, [getWatchHistoryItem, meta, player]);
+  }, [audioPlayer, player, setAudioPlayer, setVideoPlayer]);
 
   useEffect(() => {
-    if (meta && player.status === "readyToPlay" && player.currentTime < 1) {
+    if (meta && player?.status === "readyToPlay" && player.currentTime < 1) {
       const media = convertMetaToScrapeMedia(meta);
       const watchHistoryItem = getWatchHistoryItem(media);
       if (watchHistoryItem) {
@@ -109,21 +110,13 @@ export const VideoPlayer = () => {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [player.status]);
+  }, [player?.status]);
 
-  const updateResizeMode = (newMode: ResizeMode) => {
-    setResizeMode(newMode);
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  };
-
-  const pinchGesture = Gesture.Pinch().onUpdate((e) => {
-    scale.value = e.scale;
-    if (scale.value > 1 && resizeMode !== ResizeMode.COVER) {
-      runOnJS(updateResizeMode)(ResizeMode.COVER);
-    } else if (scale.value <= 1 && resizeMode !== ResizeMode.CONTAIN) {
-      runOnJS(updateResizeMode)(ResizeMode.CONTAIN);
+  const toggleAudio = useCallback(() => {
+    if (audioPlayer) {
+      audioPlayer.playing ? audioPlayer.pause() : audioPlayer.play();
     }
-  });
+  }, [audioPlayer]);
 
   const doubleTapGesture = Gesture.Tap()
     .enabled(gestureControls && isIdle)
@@ -170,11 +163,7 @@ export const VideoPlayer = () => {
       }
     });
 
-  const composedGesture = Gesture.Race(
-    panGesture,
-    pinchGesture,
-    doubleTapGesture,
-  );
+  const composedGesture = Gesture.Race(panGesture, doubleTapGesture);
 
   StatusBar.setStatusBarHidden(true);
 
@@ -204,6 +193,16 @@ export const VideoPlayer = () => {
 
       if (stream.type === "hls") {
         url = await findHLSQuality(stream.playlist, stream.headers, highest);
+        const tracks = await extractTracksFromHLS(stream.playlist, {
+          ...stream.preferredHeaders,
+          ...stream.headers,
+        });
+
+        if (tracks) setHlsTracks(tracks);
+
+        if (tracks?.audio.length) {
+          setAudioTracks(filterAudioTracks(tracks, stream.playlist));
+        }
       }
 
       if (stream.type === "file") {
@@ -233,9 +232,8 @@ export const VideoPlayer = () => {
       if (meta) {
         const item = convertMetaToItemData(meta);
         const scrapeMedia = convertMetaToScrapeMedia(meta);
-        updateWatchHistory(item, scrapeMedia, player.currentTime);
+        updateWatchHistory(item, scrapeMedia, player?.currentTime ?? 0);
       }
-      void synchronizePlayback();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
@@ -246,18 +244,13 @@ export const VideoPlayer = () => {
     selectedAudioTrack,
     setVideoSrc,
     stream,
-    synchronizePlayback,
     updateWatchHistory,
     wifiDefaultQuality,
     mobileDataDefaultQuality,
   ]);
 
   useEffect(() => {
-    const playerStatusChange = player.addListener("statusChange", (data) => {
-      if (data.status === "readyToPlay") {
-        player.play();
-      }
-
+    const playerStatusChange = player?.addListener("statusChange", (data) => {
       const isFinished = player.duration - player.currentTime < 1;
       if (
         meta &&
@@ -286,9 +279,12 @@ export const VideoPlayer = () => {
     });
 
     return () => {
-      playerStatusChange.remove();
+      playerStatusChange?.remove();
     };
   }, [player, meta, removeFromWatchHistory, autoPlay, setMeta, router]);
+
+  console.log("videoPlayer", player.playing);
+  console.log("audioPlayer", audioPlayer?.playing);
 
   return (
     <GestureDetector gesture={composedGesture}>

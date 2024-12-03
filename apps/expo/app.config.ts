@@ -45,6 +45,7 @@ const defineConfig = (): ExpoConfig => ({
   plugins: [
     "expo-router",
     "expo-video",
+    "expo-audio",
     [
       "expo-screen-orientation",
       {
