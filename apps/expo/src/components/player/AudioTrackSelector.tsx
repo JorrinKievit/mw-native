@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
+import { createAudioPlayer } from "expo-audio";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useTheme } from "tamagui";
 
-import { useAudioTrack } from "~/hooks/player/useAudioTrack";
 import { useAudioTrackStore } from "~/stores/audio";
 import { usePlayerStore } from "~/stores/player/store";
 import { MWButton } from "../ui/Button";
@@ -22,14 +22,10 @@ export const AudioTrackSelector = () => {
 
   const tracks = usePlayerStore((state) => state.interface.audioTracks);
   const setAudioTracks = usePlayerStore((state) => state.setAudioTracks);
-  const stream = usePlayerStore((state) => state.interface.currentStream);
   const selectedTrack = useAudioTrackStore((state) => state.selectedTrack);
 
-  const setSelectedAudioTrack = useAudioTrackStore(
-    (state) => state.setSelectedAudioTrack,
-  );
-
-  const { synchronizePlayback } = useAudioTrack();
+  const player = usePlayerStore((state) => state.player);
+  const setAudioPlayer = usePlayerStore((state) => state.setAudioPlayer);
 
   useEffect(() => {
     if (tracks && selectedTrack) {
@@ -47,7 +43,7 @@ export const AudioTrackSelector = () => {
     }
   }, [selectedTrack, setAudioTracks, tracks]);
 
-  if (!tracks?.length) return null;
+  if (!tracks?.length || !player) return null;
 
   return (
     <>
@@ -101,10 +97,10 @@ export const AudioTrackSelector = () => {
                   )
                 }
                 onPress={() => {
-                  setSelectedAudioTrack(track);
-                  if (stream) {
-                    void synchronizePlayback(track, stream);
-                  }
+                  const newPlayer = createAudioPlayer(track.uri);
+                  newPlayer.seekTo(player.currentTime).catch(console.error);
+                  newPlayer.volume = player.volume;
+                  setAudioPlayer(newPlayer);
                 }}
               />
             ))}

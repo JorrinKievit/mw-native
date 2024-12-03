@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+import { BackHandler } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 
 import type { ScrapeMedia } from "@movie-web/provider-utils";
@@ -10,6 +12,7 @@ import { PlayerStatus } from "~/stores/player/slices/interface";
 import { usePlayerStore } from "~/stores/player/store";
 
 export default function VideoPlayerWrapper() {
+  const resetVideo = usePlayerStore((state) => state.resetVideo);
   const playerStatus = usePlayerStore((state) => state.interface.playerStatus);
   const { presentFullscreenPlayer } = usePlayer();
 
@@ -30,6 +33,13 @@ export default function VideoPlayerWrapper() {
   const download = params.download === "true";
 
   void presentFullscreenPlayer();
+
+  useEffect(() => {
+    BackHandler.addEventListener("hardwareBackPress", () => {
+      resetVideo();
+      return false;
+    });
+  }, [resetVideo]);
 
   if (download) {
     return <ScraperProcess data={data} download />;

@@ -208,10 +208,8 @@ export const tamaguiConfig = createTamagui({
   },
   animations: createAnimations({
     fast: {
-      type: "spring",
-      damping: 20,
-      mass: 1.2,
-      stiffness: 250,
+      type: "decay",
+      deceleration: 0.999,
     },
     bounce: {
       type: "spring",

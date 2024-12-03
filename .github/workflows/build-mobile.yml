@@ -1,9 +1,16 @@
 name: build mobile app
 
 on:
-  pull_request:
-    branches:
-      - "*"
+  workflow_dispatch: # Manual trigger
+    inputs:
+      target:
+        type: choice
+        description: "Choose the build target"
+        required: true
+        default: "android"
+        options:
+          - android
+          - ios
 
 permissions:
   contents: write
@@ -11,6 +18,7 @@ permissions:
 
 jobs:
   build-android:
+    if: ${{ inputs.target == 'android' }} # Runs only if 'android' is selected
     runs-on: ubuntu-latest
 
     steps:
@@ -47,6 +55,9 @@ jobs:
       - name: Install dependencies
         run: corepack enable && pnpm install
 
+      - name: Build dependencies
+        run: pnpm run build
+
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
 
@@ -60,6 +71,7 @@ jobs:
           path: ./apps/expo/android/app/build/movie-web.apk
 
   build-ios:
+    if: ${{ inputs.target == 'ios' }} # Runs only if 'ios' is selected
     runs-on: macos-14
 
     steps:
@@ -86,6 +98,9 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install
+
+      - name: Build dependencies
+        run: pnpm run build
 
       - name: Cache Pods
         uses: actions/cache@v4

@@ -8,7 +8,6 @@ import Animated, {
 } from "react-native-reanimated";
 import { Text, View } from "tamagui";
 
-import { convertMilliSecondsToSeconds } from "~/lib/number";
 import { useCaptionsStore } from "~/stores/captions";
 import { usePlayerStore } from "~/stores/player/store";
 
@@ -27,10 +26,10 @@ export const captionIsVisible = (
 };
 
 export const CaptionRenderer = () => {
+  const player = usePlayerStore((state) => state.player);
   const isIdle = usePlayerStore((state) => state.interface.isIdle);
   const selectedCaption = useCaptionsStore((state) => state.selectedCaption);
   const delay = useCaptionsStore((state) => state.delay);
-  const status = usePlayerStore((state) => state.status);
 
   const translateY = useSharedValue(0);
 
@@ -56,20 +55,12 @@ export const CaptionRenderer = () => {
   const visibleCaptions = useMemo(
     () =>
       selectedCaption?.data.filter(({ start, end }) =>
-        captionIsVisible(
-          start,
-          end,
-          delay,
-          status?.isLoaded
-            ? convertMilliSecondsToSeconds(status.positionMillis)
-            : 0,
-        ),
+        captionIsVisible(start, end, delay, player ? player.currentTime : 0),
       ),
-    [selectedCaption, delay, status],
+    [selectedCaption, player, delay],
   );
 
-  if (!status?.isLoaded || !selectedCaption || !visibleCaptions?.length)
-    return null;
+  if (!player || !selectedCaption || !visibleCaptions?.length) return null;
 
   return (
     <Animated.View

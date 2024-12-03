@@ -1,7 +1,6 @@
 import type { ExpoConfig } from "expo/config";
 
 import { version } from "./package.json";
-import withRemoveiOSNotificationEntitlement from "./src/plugins/withRemoveiOSNotificationEntitlement";
 
 const defineConfig = (): ExpoConfig => ({
   name: "movie-web",
@@ -20,20 +19,19 @@ const defineConfig = (): ExpoConfig => ({
   },
   assetBundlePatterns: ["**/*"],
   ios: {
-    bundleIdentifier: "dev.movieweb.app",
+    newArchEnabled: true,
+    bundleIdentifier: "dev.movieweb.mobile",
     supportsTablet: true,
     requireFullScreen: true,
     infoPlist: {
       CFBundleName: "movie-web",
       NSPhotoLibraryUsageDescription:
         "This app saves videos to the photo library.",
-      NSAppTransportSecurity: {
-        NSAllowsArbitraryLoads: true,
-      },
     },
   },
   android: {
-    package: "dev.movieweb.app",
+    newArchEnabled: true,
+    package: "dev.movieweb.mobile",
     permissions: ["WRITE_SETTINGS"],
   },
   web: {
@@ -46,7 +44,8 @@ const defineConfig = (): ExpoConfig => ({
   },
   plugins: [
     "expo-router",
-    [withRemoveiOSNotificationEntitlement as unknown as string],
+    "expo-video",
+    "expo-audio",
     [
       "expo-screen-orientation",
       {
@@ -59,12 +58,8 @@ const defineConfig = (): ExpoConfig => ({
         android: {
           minSdkVersion: 24,
           packagingOptions: {
-            pickFirst: [
-              "lib/x86/libcrypto.so",
-              "lib/x86_64/libcrypto.so",
-              "lib/armeabi-v7a/libcrypto.so",
-              "lib/arm64-v8a/libcrypto.so",
-            ],
+            pickFirst: ["**/libcrypto.so"],
+            excludes: ["**/libreactnative.so"],
           },
         },
       },

@@ -108,7 +108,7 @@ export default function Page() {
           </Link>
           <Link
             href={{
-              pathname: "/(tabs)/",
+              pathname: "/(tabs)",
             }}
             replace
             asChild

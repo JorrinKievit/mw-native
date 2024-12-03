@@ -66,9 +66,9 @@ export const useBaseScrape = () => {
   const startEvent = useCallback((id: ScraperEvent<"start">) => {
     const lastIdTmp = lastId.current;
     setSources((s) => {
-      if (s[id]) s[id]!.status = "pending";
-      if (lastIdTmp && s[lastIdTmp] && s[lastIdTmp]!.status === "pending")
-        s[lastIdTmp]!.status = "success";
+      if (s[id]) s[id].status = "pending";
+      if (lastIdTmp && s[lastIdTmp] && s[lastIdTmp].status === "pending")
+        s[lastIdTmp].status = "success";
       return { ...s };
     });
     setCurrentSource(id);
@@ -168,6 +168,7 @@ export function useScrape() {
           update: updateEvent,
           discoverEmbeds: discoverEmbedsEvent,
         },
+        sourceOrder: ["insertunit"],
       });
       return getResult(output);
     },
@@ -238,6 +239,7 @@ export const useSourceScrape = (sourceId: string | null) => {
         sourceId,
         media: scrapeMedia,
       });
+      console.log(result);
 
       if (result?.stream) {
         setCurrentStream(result.stream[0]!);

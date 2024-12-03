@@ -1,9 +1,5 @@
-import { Linking } from "react-native";
-import * as Haptics from "expo-haptics";
-import { FontAwesome6, MaterialIcons } from "@expo/vector-icons";
-import { Circle, View } from "tamagui";
+import { View } from "tamagui";
 
-import { DISCORD_LINK, GITHUB_LINK } from "~/constants/core";
 import { BrandPill } from "../BrandPill";
 
 export function Header() {
@@ -11,7 +7,7 @@ export function Header() {
     <View alignItems="center" gap="$3" flexDirection="row">
       <BrandPill />
 
-      <Circle
+      {/* <Circle
         backgroundColor="$pillBackground"
         size="$3.5"
         pressStyle={{
@@ -42,7 +38,7 @@ export function Header() {
         }
       >
         <FontAwesome6 name="github" size={28} color="white" />
-      </Circle>
+      </Circle> */}
     </View>
   );
 }

@@ -17,10 +17,10 @@ coverage
 dist/
 expo-env.d.ts
 apps/expo/.gitignore
-ios/
-android/
-!modules/*/ios/
-!modules/*/android/
+
+# Ignore top-level ios and android directories
+apps/expo/ios/
+apps/expo/android/
 
 # production
 build

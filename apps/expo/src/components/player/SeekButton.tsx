@@ -7,11 +7,10 @@ interface SeekProps {
 }
 
 export const SeekButton = ({ type }: SeekProps) => {
-  const videoRef = usePlayerStore((state) => state.videoRef);
-  const status = usePlayerStore((state) => state.status);
-  const setAudioPositionAsync = usePlayerStore(
-    (state) => state.setAudioPositionAsync,
-  );
+  const player = usePlayerStore((state) => state.player);
+  const audioPlayer = usePlayerStore((state) => state.audioPlayer);
+
+  if (!player) return null;
 
   return (
     <MaterialIcons
@@ -19,17 +18,12 @@ export const SeekButton = ({ type }: SeekProps) => {
       size={36}
       color="white"
       onPress={() => {
-        if (status?.isLoaded) {
-          const position =
-            type === "forward"
-              ? status.positionMillis + 10000
-              : status.positionMillis - 10000;
+        player.currentTime =
+          type === "forward"
+            ? player.currentTime + 10
+            : player.currentTime - 10;
 
-          videoRef?.setPositionAsync(position).catch(() => {
-            console.log("Error seeking backwards");
-          });
-          void setAudioPositionAsync(position);
-        }
+        if (audioPlayer) audioPlayer.currentTime = player.currentTime;
       }}
     />
   );

@@ -5,18 +5,18 @@ import { usePlayerStore } from "~/stores/player/store";
 import VideoSlider from "./VideoSlider";
 
 export const ProgressBar = () => {
-  const status = usePlayerStore((state) => state.status);
-  const videoRef = usePlayerStore((state) => state.videoRef);
+  const player = usePlayerStore((state) => state.player);
   const setIsIdle = usePlayerStore((state) => state.setIsIdle);
 
   const updateProgress = useCallback(
     (newProgress: number) => {
-      videoRef?.setStatusAsync({ positionMillis: newProgress }).catch(() => {
-        console.error("Error updating progress");
-      });
+      if (!player) return;
+      player.currentTime = newProgress;
     },
-    [videoRef],
+    [player],
   );
+
+  if (!player) return null;
 
   return (
     <TouchableOpacity
@@ -28,7 +28,7 @@ export const ProgressBar = () => {
         paddingTop: 24,
       }}
       onPress={() => setIsIdle(false)}
-      disabled={!status?.isLoaded}
+      disabled={player.status !== "readyToPlay"}
     >
       <VideoSlider onSlidingComplete={updateProgress} />
     </TouchableOpacity>

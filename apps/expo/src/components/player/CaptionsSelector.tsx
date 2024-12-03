@@ -1,5 +1,4 @@
 import type { LanguageCode } from "iso-639-1";
-import type { ContentCaption } from "subsrt-ts/dist/types/handler";
 import { useState } from "react";
 import { MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
 import { useMutation } from "@tanstack/react-query";
@@ -28,9 +27,7 @@ const parseCaption = async (
   const data = await response.text();
   return {
     ...caption,
-    data: parse(data).filter(
-      (cue) => cue.type === "caption",
-    ) as ContentCaption[],
+    data: parse(data).filter((cue) => cue.type === "caption"),
   };
 };
 

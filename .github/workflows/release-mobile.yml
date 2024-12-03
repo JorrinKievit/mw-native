@@ -3,7 +3,7 @@ name: release mobile app
 on:
   push:
     branches:
-      - main
+      - master
   workflow_dispatch:
 
 permissions:

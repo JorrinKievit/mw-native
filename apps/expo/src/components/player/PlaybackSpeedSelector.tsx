@@ -44,11 +44,8 @@ export const PlaybackSpeedSelector = (props: SheetProps) => {
                 )
               }
               onPress={() => {
-                changePlaybackSpeed(speed)
-                  .then(() => props.onOpenChange?.(false))
-                  .catch((err) => {
-                    console.log("error", err);
-                  });
+                changePlaybackSpeed(speed);
+                props.onOpenChange?.(false);
               }}
             />
           ))}

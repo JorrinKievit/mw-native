@@ -328,20 +328,20 @@ export function ThemeSelector(props: SelectProps) {
   const setTheme = useThemeStore((s) => s.setTheme);
 
   return (
-    <MWSelect
+    <Select
       value={themeStore}
       onValueChange={setTheme}
       disablePreventBodyScroll
       {...props}
     >
-      <MWSelect.Trigger
+      <Select.Trigger
         maxWidth="$12"
         iconAfter={
           <FontAwesome name="chevron-down" color={theme.inputIconColor.val} />
         }
       >
         <Select.Value fontWeight="$semibold" textTransform="capitalize" />
-      </MWSelect.Trigger>
+      </Select.Trigger>
 
       <Adapt platform="native">
         <Sheet
@@ -409,7 +409,7 @@ export function ThemeSelector(props: SelectProps) {
           ))}
         </Select.Viewport>
       </Select.Content>
-    </MWSelect>
+    </Select>
   );
 }
 

@@ -1,14 +1,14 @@
-import type { NativeSyntheticEvent } from "react-native";
-import type { ContextMenuOnPressNativeEvent } from "react-native-context-menu-view";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { Keyboard, TouchableOpacity } from "react-native";
-import ContextMenu from "react-native-context-menu-view";
+import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { Image, Text, View } from "tamagui";
 
+import type { Action } from "./ContextMenu";
 import { useToast } from "~/hooks/useToast";
 import { usePlayerStore } from "~/stores/player/store";
 import { useBookmarkStore, useWatchHistoryStore } from "~/stores/settings";
+import { ContextMenuActions, SheetContextMenu } from "./ContextMenu";
 
 export interface ItemData {
   id: string;
@@ -19,13 +19,6 @@ export interface ItemData {
   year: number;
   release_date?: Date;
   posterUrl: string;
-}
-
-enum ContextMenuActions {
-  Bookmark = "Bookmark",
-  RemoveBookmark = "Remove Bookmark",
-  Download = "Download",
-  RemoveWatchHistoryItem = "Remove from Continue Watching",
 }
 
 function checkReleased(media: ItemData): boolean {
@@ -69,70 +62,79 @@ export default function Item({ data }: { data: ItemData }) {
     });
   };
 
-  const contextMenuActions = [
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const handleLongPress = () => {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    setMenuOpen(true);
+  };
+
+  const contextMenuActions: Action[] = [
     {
       title: isBookmarked(data)
         ? ContextMenuActions.RemoveBookmark
         : ContextMenuActions.Bookmark,
+      onPress: () => {
+        if (isBookmarked(data)) {
+          removeBookmark(data);
+          showToast("Removed from bookmarks", {
+            burntOptions: { preset: "done" },
+          });
+        } else {
+          addBookmark(data);
+          showToast("Added to bookmarks", { burntOptions: { preset: "done" } });
+        }
+      },
     },
-    ...(type === "movie" ? [{ title: ContextMenuActions.Download }] : []),
+    ...(data.type === "movie"
+      ? [
+          {
+            title: ContextMenuActions.Download,
+            onPress: () => {
+              router.push({
+                pathname: "/videoPlayer",
+                params: { data: JSON.stringify(data), download: "true" },
+              });
+            },
+          },
+        ]
+      : []),
     ...(hasWatchHistoryItem(data)
-      ? [{ title: ContextMenuActions.RemoveWatchHistoryItem }]
+      ? [
+          {
+            title: ContextMenuActions.RemoveWatchHistoryItem,
+            onPress: () => {
+              removeFromWatchHistory(data);
+              showToast("Removed from Continue Watching", {
+                burntOptions: { preset: "done" },
+              });
+            },
+          },
+        ]
       : []),
   ];
-
-  const onContextMenuPress = (
-    e: NativeSyntheticEvent<ContextMenuOnPressNativeEvent>,
-  ) => {
-    if (e.nativeEvent.name === ContextMenuActions.Bookmark) {
-      addBookmark(data);
-      showToast("Added to bookmarks", {
-        burntOptions: { preset: "done" },
-      });
-    } else if (e.nativeEvent.name === ContextMenuActions.RemoveBookmark) {
-      removeBookmark(data);
-      showToast("Removed from bookmarks", {
-        burntOptions: { preset: "done" },
-      });
-    } else if (e.nativeEvent.name === ContextMenuActions.Download) {
-      router.push({
-        pathname: "/videoPlayer",
-        params: { data: JSON.stringify(data), download: "true" },
-      });
-    } else if (
-      e.nativeEvent.name === ContextMenuActions.RemoveWatchHistoryItem
-    ) {
-      removeFromWatchHistory(data);
-      showToast("Removed from Continue Watching", {
-        burntOptions: { preset: "done" },
-      });
-    }
-  };
 
   return (
     <TouchableOpacity
       onPress={handlePress}
-      // eslint-disable-next-line @typescript-eslint/no-empty-function
-      onLongPress={() => {}}
+      onLongPress={handleLongPress}
       style={{ width: "100%" }}
     >
-      <View width="100%">
-        <ContextMenu actions={contextMenuActions} onPress={onContextMenuPress}>
-          <View
-            marginBottom={4}
-            aspectRatio={9 / 14}
-            width="100%"
-            overflow="hidden"
-            borderRadius={24}
-            height="$14"
-          >
-            <Image source={{ uri: posterUrl }} width="100%" height="100%" />
-          </View>
-        </ContextMenu>
-        <Text fontWeight="bold" fontSize={14}>
+      <View width="100%" justifyContent="center" alignItems="center">
+        <View
+          marginBottom={4}
+          aspectRatio={9 / 14}
+          width="100%"
+          overflow="hidden"
+          borderRadius={24}
+          height="$14"
+        >
+          <Image source={{ uri: posterUrl }} width="100%" height="100%" />
+        </View>
+        <Text fontWeight="bold" fontSize={14} numberOfLines={1}>
           {title}
         </Text>
-        <View flexDirection="row" alignItems="center" gap={3}>
+        <View flexDirection="row" alignItems="center" gap="$2">
           <Text fontSize={12} color="$ash100">
             {type === "tv" ? "Show" : "Movie"}
           </Text>
@@ -147,6 +149,11 @@ export default function Item({ data }: { data: ItemData }) {
           </Text>
         </View>
       </View>
+      <SheetContextMenu
+        isOpen={menuOpen}
+        actions={contextMenuActions}
+        onClose={() => setMenuOpen(false)}
+      />
     </TouchableOpacity>
   );
 }

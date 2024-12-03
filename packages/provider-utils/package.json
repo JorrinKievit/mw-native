@@ -1,6 +1,6 @@
 {
   "name": "@movie-web/provider-utils",
-  "private": true,
+  "private": false,
   "version": "0.1.0",
   "type": "module",
   "main": "./src/index.ts",
@@ -18,8 +18,8 @@
     "@movie-web/eslint-config": "workspace:^0.2.0",
     "@movie-web/prettier-config": "workspace:^0.1.0",
     "@movie-web/tsconfig": "workspace:^0.1.0",
-    "eslint": "^8.56.0",
-    "prettier": "^3.1.1",
+    "eslint": "^8.57.0",
+    "prettier": "^3.2.5",
     "typescript": "^5.4.3"
   },
   "eslintConfig": {
@@ -29,8 +29,9 @@
   },
   "prettier": "@movie-web/prettier-config",
   "dependencies": {
-    "@movie-web/providers": "https://github.com/sussy-code/providers",
+    "@movie-web/providers": "workspace:*",
     "parse-hls": "^1.0.7",
+    "prettier": "^3.2.5",
     "srt-webvtt": "^2.0.0",
     "tmdb-ts": "^1.6.1"
   }

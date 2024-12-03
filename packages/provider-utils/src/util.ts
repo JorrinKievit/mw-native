@@ -32,10 +32,10 @@ export function transformSearchResultToScrapeMedia<T extends "tv" | "movie">(
       season: {
         number: season ?? tvResult.seasons[0]?.season_number ?? 1,
         tmdbId: season
-          ? tvResult.seasons
+          ? (tvResult.seasons
               .find((s) => s.season_number === season)
-              ?.id.toString() ?? ""
-          : tvResult.seasons[0]?.id.toString() ?? "",
+              ?.id.toString() ?? "")
+          : (tvResult.seasons[0]?.id.toString() ?? ""),
       },
       episode: {
         number: episode ?? 1,
